@@ -3,8 +3,8 @@ import pandas as pd
 import sqlite3
 import pickle
 from flask import Flask, render_template, request, redirect
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.naive_bayes import MultinomialNB
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
 
 app = Flask(__name__)
 
@@ -29,26 +29,55 @@ MODEL_PATH = 'model/expense_model.pkl'
 os.makedirs('model', exist_ok=True)
 
 if not os.path.exists(MODEL_PATH):
-    # Sample training data for simple categorization
+    # Expanded, higher-quality training dataset
     data = {
         'description': [
-            'pizza', 'burger', 'restaurant', 'bus', 'uber', 'flight',
-            'shirt', 'jeans', 'shoes', 'movie', 'concert', 'electricity bill'
+            # Food
+            'pizza', 'burger', 'restaurant', 'cafe', 'dinner', 'breakfast', 'snack', 'lunch', 'coffee',
+            # Travel
+            'bus', 'uber', 'ola', 'flight', 'train', 'taxi', 'petrol', 'metro', 'cab fare',
+            # Shopping
+            'shirt', 'jeans', 'shoes', 'bag', 'watch', 'clothes', 'jacket', 'tshirt', 'accessories',
+            # Entertainment
+            'movie', 'concert', 'netflix', 'spotify', 'cinema', 'game', 'theatre', 'subscription',
+            # Utilities
+            'electricity bill', 'water bill', 'gas', 'internet', 'mobile recharge', 'rent', 'insurance',
+            # Groceries
+            'milk', 'bread', 'vegetables', 'fruits', 'groceries', 'supermarket', 'rice', 'oil'
         ],
         'category': [
-            'Food', 'Food', 'Food', 'Travel', 'Travel', 'Travel',
-            'Shopping', 'Shopping', 'Shopping', 'Entertainment', 'Entertainment', 'Utilities'
+            # Food
+            'Food', 'Food', 'Food', 'Food', 'Food', 'Food', 'Food', 'Food', 'Food',
+            # Travel
+            'Travel', 'Travel', 'Travel', 'Travel', 'Travel', 'Travel', 'Travel', 'Travel', 'Travel',
+            # Shopping
+            'Shopping', 'Shopping', 'Shopping', 'Shopping', 'Shopping', 'Shopping', 'Shopping', 'Shopping', 'Shopping',
+            # Entertainment
+            'Entertainment', 'Entertainment', 'Entertainment', 'Entertainment', 'Entertainment', 'Entertainment', 'Entertainment', 'Entertainment',
+            # Utilities
+            'Utilities', 'Utilities', 'Utilities', 'Utilities', 'Utilities', 'Utilities', 'Utilities',
+            # Groceries
+            'Groceries', 'Groceries', 'Groceries', 'Groceries', 'Groceries', 'Groceries', 'Groceries', 'Groceries'
         ]
     }
+
     df = pd.DataFrame(data)
-    vectorizer = CountVectorizer()
+
+    # TF-IDF: smarter word weighting
+    vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1,2))
     X = vectorizer.fit_transform(df['description'])
-    model = MultinomialNB()
+
+    # Logistic Regression for better accuracy
+    model = LogisticRegression(max_iter=1000)
     model.fit(X, df['category'])
 
+    # Save model
     with open(MODEL_PATH, 'wb') as f:
         pickle.dump((vectorizer, model), f)
+
+    print("✅ New ML model trained and saved.")
 else:
+    # Load pre-trained model
     with open(MODEL_PATH, 'rb') as f:
         vectorizer, model = pickle.load(f)
 
