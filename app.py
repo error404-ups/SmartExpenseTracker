@@ -57,9 +57,12 @@ else:
 def index():
     return render_template('index.html')
 
-
 @app.route('/upload', methods=['POST'])
 def upload():
+    import matplotlib
+    matplotlib.use('Agg')  # Use non-GUI backend (fixes warning)
+    import matplotlib.pyplot as plt
+    import io, base64
     file = request.files['file']
     if not file:
         return "No file uploaded!"
@@ -72,17 +75,47 @@ def upload():
     X_test = vectorizer.transform(df['description'])
     df['category'] = model.predict(X_test)
 
+    # --- Save to DB ---
     with sqlite3.connect(DB_PATH) as conn:
         df.to_sql('expenses', conn, if_exists='append', index=False)
 
-    # Basic insight: average spending per category
-    insights = df.groupby('category')['amount'].sum().reset_index()
+    # --- Insights ---
+    insights_df = df.groupby('category')['amount'].sum().reset_index()
+    top_category = insights_df.loc[insights_df['amount'].idxmax()]
+    insights_text = f"Highest spending category: {top_category['category']} (₹{top_category['amount']})"
+
+    # --- Pie Chart (Category Distribution) ---
+    plt.figure(figsize=(5,5))
+    plt.pie(insights_df['amount'], labels=insights_df['category'], autopct='%1.1f%%', startangle=140)
+    plt.title('Spending by Category')
+
+    pie_img = io.BytesIO()
+    plt.savefig(pie_img, format='png', bbox_inches='tight')
+    pie_img.seek(0)
+    pie_url = base64.b64encode(pie_img.getvalue()).decode()
+    plt.close()
+
+    # --- Bar Chart (Category vs Amount) ---
+    plt.figure(figsize=(6,4))
+    plt.bar(insights_df['category'], insights_df['amount'])
+    plt.xlabel('Category')
+    plt.ylabel('Amount (₹)')
+    plt.title('Spending Summary')
+
+    bar_img = io.BytesIO()
+    plt.savefig(bar_img, format='png', bbox_inches='tight')
+    bar_img.seek(0)
+    bar_url = base64.b64encode(bar_img.getvalue()).decode()
+    plt.close()
 
     return render_template(
-    'result.html',
-    table=df.to_html(classes='data', index=False),
-    insights=insights.to_dict(orient='records')
-)
+        'result.html',
+        table=df.to_html(classes='data', index=False),
+        insights=insights_df.to_dict(orient='records'),
+        insights_text=insights_text,
+        pie_chart=pie_url,
+        bar_chart=bar_url
+    )
 
  
 
