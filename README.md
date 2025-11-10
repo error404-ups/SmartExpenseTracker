@@ -14,3 +14,5 @@ Python, Flask, scikit-learn, SQLite, Matplotlib
 1. Clone repo
 2. Install requirements
 3. Run `python app.py`
+
+<img width="931" height="331" alt="image" src="https://github.com/user-attachments/assets/040b0bf4-135e-4b98-a787-c1c7295eb22c" />
